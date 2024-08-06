@@ -49,12 +49,13 @@ void GraphEdge::toggleSwitch()
 void GraphEdge::render() {
 
 	//calculate to and from vectors in update and constructor, then use them in specific renders
-	setRenderColor(color);
 	switch (type) {
 	case Positive:
+		setRenderColor(WHITE);
 		renderPos();
 		break;
 	case Negative:
+		setRenderColor(RED);
 		renderNeg();
 		break;
 	}

@@ -153,6 +153,7 @@ void updateIcons() {
 	icons[2]->setIcon(editIcons[selectedEditTool]->getIcon());
 	icons[3]->setIcon(chipIcons[selectedChipTool]->getIcon());
 	icons[4]->setIcon(fireIcons[selectedFireTool]->getIcon());
+	icons[5]->setIcon(textIcons[selectedTextTool]->getIcon());
 	
 }
 
@@ -196,6 +197,10 @@ void renderObjects(bool showGhost) {
 
 	for (int i = 0; i < nodes.size(); i++) {
 		nodes[i]->render();
+	}
+
+	for( int i = 0; i<textboxes.size(); i++) {
+		textboxes[i]->render();
 	}
 
 

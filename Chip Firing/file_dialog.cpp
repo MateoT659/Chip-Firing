@@ -73,6 +73,7 @@ void openFile() {
 
 	std::vector<GraphNode*> fileNodes;
 	std::vector<GraphEdge*> fileEdges;
+	std::vector<Textbox*> fileTextboxes;
 
 	inStream.open(filename);
 
@@ -140,6 +141,31 @@ void openFile() {
 		wordVec.clear();
 	}
 
+	//text
+	int height;
+	std::string text;
+	while (!error && getline(inStream, text) && getline(inStream, line) && line.size() != 0) {
+		std::stringstream strStream(line);
+
+		while (strStream >> word) wordVec.push_back(word);
+
+		if (wordVec.size() < 3) return;
+
+		try {
+			x = stoi(wordVec[0]);
+			y = stoi(wordVec[1]);
+			height = stoi(wordVec[2]);
+		}
+		catch (...) {
+			return;
+		}
+
+		fileTextboxes.push_back(new Textbox(text, x, y, height, WHITE));
+
+		wordVec.clear();
+	}
+
+
 
 	inStream.close();
 	if (error) return;
@@ -152,8 +178,13 @@ void openFile() {
 		delete edge;
 	}
 	edges.clear();
+	for (Textbox* t : textboxes) {
+		delete t;
+	}
+	textboxes.clear();
 	nodes = fileNodes;
 	edges = fileEdges;
+	textboxes = fileTextboxes;
 
 	for (GraphNode* n : nodes) {
 		n->updateTextColor();
@@ -189,6 +220,17 @@ void saveTo(std::string filename) {
 		outStream << indexMap[edges[i]->getNode1()] << " "
 			<< indexMap[edges[i]->getNode2()] << " "
 			<< (int)edges[i]->getType() << "\n";
+	}
+
+	outStream << "\n";
+
+	//input all textboxes on seperate lines: text, x, y, height
+
+	for (Textbox* t : textboxes) {
+		outStream << t->getText() << "\n"
+			<< t->getPos().x << " "
+			<< t->getPos().y << " "
+			<< t->getHeight() << "\n";
 	}
 
 

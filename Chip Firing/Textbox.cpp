@@ -8,7 +8,7 @@ Textbox::Textbox(std::string text, Vec2 pos, int height, SDL_Color color)
 	this->box.w = (int)((double)height * 3. / 5. * (double)text.size());
 	this->box.x = pos.x - box.w/2;
 	this->box.y = pos.y;
-	
+	this->beingEdited = false;
 	this->color = color;
 
 	this->texture = NULL;
@@ -39,6 +39,7 @@ Textbox::Textbox(std::string text, int x, int y, int height, SDL_Color color)
 	this->box.w = (int)((double)height * 3. / 5. * (double)text.size());
 	this->box.x = pos.x - box.w / 2;
 	this->box.y = y;
+	this->beingEdited = false;
 	this->color = color;
 
 	this->texture = NULL;

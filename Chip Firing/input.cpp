@@ -18,6 +18,10 @@ void signSwitch(SDL_Event*);
 void fire(SDL_Event*);
 void inverseFire(SDL_Event*);
 
+void createText(SDL_Event*, Vec2 mousePos);
+void deleteText(SDL_Event*, Vec2 mousePos, Uint8 button);
+bool moveText(SDL_Event*, Vec2 mousePos, Uint8 button);
+
 
 void parseEvent(SDL_Event* event) {
 	Vec2 mousePos = getMousePos();
@@ -88,6 +92,22 @@ void parseEvent(SDL_Event* event) {
 						break;
 					}
 					break;
+				case 5:
+					//Text tools, create, move, and delete text
+					switch (selectedTextTool) {
+					case 0:
+						SetCursor(LoadCursor(NULL, IDC_IBEAM));
+						createText(event, mousePos);
+						break;
+					case 1:
+						deleteText(event, mousePos, SDL_BUTTON_LEFT);
+						break;
+					case 2:
+						SetCursor(LoadCursor(NULL, IDC_SIZEALL));
+						moveText(event, mousePos, SDL_BUTTON_LEFT);
+						break;
+					}
+					break;
 				}
 			}
 			break;
@@ -123,12 +143,16 @@ void parseEvent(SDL_Event* event) {
 					fire(event);
 					break;
 				}
+			case 5:
+				deleteText(event, mousePos, SDL_BUTTON_RIGHT);
 				break;
 			}
+			
 			break;
 		case SDL_BUTTON_MIDDLE:
 			SetCursor(LoadCursor(NULL, IDC_SIZEALL));
-			dragNode(event, SDL_BUTTON_MIDDLE, mousePos, true);
+			if (!moveText(event, mousePos, SDL_BUTTON_MIDDLE))
+				dragNode(event, SDL_BUTTON_MIDDLE, mousePos, true);
 			break;
 		}
 		break;
@@ -153,6 +177,118 @@ void parseEvent(SDL_Event* event) {
 		break; 
 	}
 }
+
+
+void createText(SDL_Event* event, Vec2 mousePos) {
+	//NEXT figure out text input, use mouse wheel to change size. clicking colorbox changes color using picker. end on ENTER or click off of box. 	
+	Textbox* editing = nullptr;
+	std::string text;
+	bool quit = false;
+	int ind = -1;
+	for (int i = 0; i < textboxes.size() && editing == nullptr; i++) {
+		if (textboxes[i]->containsPoint(mousePos)) {
+			editing = textboxes[i];
+			text = editing->getText();
+			ind = i;
+		}
+	}
+
+	if (editing == nullptr) {
+		editing = new Textbox(" ", mousePos, 30, WHITE);
+	}
+
+	if (ind == -1) {
+		textboxes.push_back(editing);
+		ind = (int)textboxes.size() - 1;
+	}
+
+	editing->setEditState(true);
+
+	SDL_StartTextInput();
+
+	while (!quit) {
+		while (SDL_PollEvent(event)) {
+			Vec2 mousePos = getMousePos();
+			switch (event->type) {
+			case SDL_KEYDOWN:
+				if (event->key.keysym.sym == SDLK_RETURN || event->key.keysym.sym == SDLK_ESCAPE) {
+					quit = true;
+				}
+				else if (event->key.keysym.sym == SDLK_BACKSPACE && text.length() > 0) {
+					text.pop_back();
+					editing->setText(text);
+				}
+				break;
+			case SDL_TEXTINPUT:
+				text += event->text.text;
+				editing->setText(text);
+				break;
+			case SDL_MOUSEBUTTONDOWN:
+				quit = true;
+				break;
+			case SDL_MOUSEWHEEL:
+				if (event->wheel.y > 0) {
+					editing->setHeight(editing->getHeight() + 2);
+				}
+				else if (event->wheel.y < 0) {
+					editing->setHeight(editing->getHeight() - 2);
+				}
+			}
+			if (text == " ") text = "";
+			renderU(false);
+		}
+	}
+
+	SDL_StopTextInput();
+
+	editing->setEditState(false);
+	if (text == "") {
+		delete editing;
+		textboxes.erase(textboxes.begin() + ind);
+	}
+}
+
+
+void deleteText(SDL_Event* event, Vec2 mousePos, Uint8 button) {
+	while (!(event->type == SDL_MOUSEBUTTONUP && event->button.button == button)) {
+		if (SDL_PollEvent(event)) {
+			mousePos = getMousePos();
+
+			for (int i = 0; i < textboxes.size();) {
+				if (textboxes[i]->containsPoint(mousePos)) {
+					delete textboxes[i];
+					textboxes.erase(textboxes.begin() + i);
+				}
+				else {
+					i++;
+				}
+			}
+			renderU(false);
+		}
+	}
+}
+
+
+bool moveText(SDL_Event* event, Vec2 mousePos, Uint8 button) {
+	Textbox* toMove = nullptr;
+	for (int i = 0; i < textboxes.size() && toMove == nullptr; i++) {
+		if (textboxes[i]->containsPoint(mousePos)) {
+			toMove = textboxes[i];
+		}
+	}
+	if (toMove == nullptr) return false;
+	Vec2 mousePos2;
+	while (!(event->type == SDL_MOUSEBUTTONUP && event->button.button == button)) {
+		if (SDL_PollEvent(event)) {
+			mousePos2 = getMousePos();
+			toMove->translateBy(mousePos2 - mousePos);
+			mousePos = getMousePos();
+			renderU(false);
+		}
+	}
+	return true;
+}
+
 
 
 void addChip(SDL_Event *event) {
@@ -198,11 +334,99 @@ void signSwitch(SDL_Event* event) {
 	}
 }
 
+void unfireAnimation(GraphNode* v) {
+	//fire animation, gold chips go over each edge
+
+	float pct = 0;
+	int fc = 12;
+
+	std::vector<GraphNode*> neighbors;
+	std::vector<bool> sign;
+
+	for (GraphEdge* e : v->getEdges()) {
+		GraphNode* v2 = e->getNode1() == v ? e->getNode2() : e->getNode1();
+		neighbors.push_back(v2);
+		sign.push_back(e->getType() == Positive);
+	}
+
+
+	for (int i = 0; i < fc; i++) {
+		pct = ((double)i) / fc;
+
+		clearScreen(BLACK);
+		render(false);
+		setRenderColor(YELLOW);
+		for (int i = 0; i < neighbors.size(); i++) {
+			GraphNode* n = neighbors[i];
+			if (sign[i]) {
+				Vec2 pos = n->getPos() * (1 - pct) + v->getPos() * pct;
+				drawCircle(pos, 5);
+			}
+			else {
+				//do both ways
+				if (pct >= 0.5) {
+					Vec2 pos1 = v->getPos() * (1 - pct) + n->getPos() * pct;
+					Vec2 pos2 = v->getPos() * (pct)+n->getPos() * (1 - pct);
+					drawCircle(pos1, 5);
+					drawCircle(pos2, 5);
+				}
+			}
+		}
+
+		SDL_RenderPresent(renderer);
+		SDL_Delay(1000 / 60);
+	}
+}
+void fireAnimation(GraphNode* v) {
+	//fire animation, gold chips go over each edge
+
+	float pct = 0;
+	int fc = 12;
+
+	std::vector<GraphNode*> neighbors;
+	std::vector<bool> sign;
+
+	for(GraphEdge* e: v->getEdges()) {
+		GraphNode* v2 = e->getNode1() == v ? e->getNode2() : e->getNode1();
+		neighbors.push_back(v2);
+		sign.push_back(e->getType() == Positive);
+	}
+
+
+	for (int i = 0; i < fc; i++) {
+		pct = ((double)i )/ fc;
+
+		clearScreen(BLACK);
+		render(false);
+		setRenderColor(YELLOW);
+		for (int i = 0; i < neighbors.size(); i++) {
+			GraphNode* n = neighbors[i];
+			if (sign[i]) {
+				Vec2 pos = v->getPos() * (1 - pct) + n->getPos() * pct;
+				drawCircle(pos, 5);
+			}
+			else {
+				//do both ways
+				if (pct <= 0.5) {
+					Vec2 pos1 = v->getPos() * (1 - pct) + n->getPos() * pct;
+					Vec2 pos2 = v->getPos() * (pct) + n->getPos() * (1- pct);
+					drawCircle(pos1, 5);
+					drawCircle(pos2, 5);
+				}
+			}
+		}
+
+		SDL_RenderPresent(renderer);
+		SDL_Delay(1000/60);
+	}
+}
+
 void fire(SDL_Event* event) {
 	Vec2 mousepos = getMousePos();
 	for (GraphNode* v : nodes) {
 		if (v->containsPoint(mousepos)) {
 			v->fire();
+			fireAnimation(v);
 			return;
 		}
 	}
@@ -212,6 +436,7 @@ void inverseFire(SDL_Event* event) {
 	for (GraphNode* v : nodes) {
 		if (v->containsPoint(mousepos)) {
 			v->inverseFire();
+			unfireAnimation(v);
 			return;
 		}
 	}
@@ -231,8 +456,12 @@ void newFile()
 	for (GraphEdge* edge : edges) {
 		delete edge;
 	}
-	nodes.clear();
 	edges.clear();
+	for (Textbox* t : textboxes) {
+		delete t;
+	}
+	textboxes.clear();
+	
 	currentFilepath = "None";
 }
 
@@ -516,6 +745,61 @@ void openFireMenu(SDL_Event* event) {
 
 }
 
+void openTextMenu(SDL_Event* event) {
+	SDL_Rect menuBG = { 0, 63 * 5, (int)(63 * (int)textIcons.size()), 63 };
+	SDL_Color color = { 80, 80, 80, 255 };
+	Vec2 mousePos = getMousePos();
+
+	render(false);
+	drawFilledRectangle(menuBG, color);
+	for (int i = 0; i < textIcons.size(); i++) {
+		textIcons[i]->render();
+	}
+	SDL_RenderPresent(renderer);
+
+	while (!SDL_PollEvent(event));
+	bool toolTipRendered = false;
+	long lastRenderMilli = 0;
+	while (!(event->type == SDL_MOUSEBUTTONDOWN && event->button.button == SDL_BUTTON_LEFT)) {
+		if (SDL_PollEvent(event)) {
+			currentToolTip = "";
+			if (toolTipRendered)
+				toolTipRendered = false;
+			mousePos = getMousePos();
+			if (rectIsTouched(menuBG, mousePos)) {
+				updateHoverStatus(mousePos, textIcons);
+			}
+
+			render(false);
+			drawFilledRectangle(menuBG, color);
+			for (int i = 0; i < textIcons.size(); i++) {
+				textIcons[i]->render();
+			}
+			SDL_RenderPresent(renderer);
+
+			lastRenderMilli = SDL_GetTicks64();
+		}
+		if (!toolTipRendered && currentToolTip != "" && SDL_GetTicks64() - lastRenderMilli > 500) {
+			render(false);
+			drawFilledRectangle(menuBG, color);
+			for (int i = 0; i < textIcons.size(); i++) {
+				textIcons[i]->render();
+			}
+			renderToolTip();
+			SDL_RenderPresent(renderer);
+			toolTipRendered = true;
+		}
+	}
+
+	mousePos = getMousePos();
+	int i;
+	for (i = 0; i < textIcons.size() && !textIcons[i]->containsPoint(mousePos); i++);
+	if (i < textIcons.size()) {
+		selectedTextTool = i;
+		updateIcons();
+	}
+
+}
 
 
 void createObject(SDL_Event* event, Vec2 mousePos) {
@@ -546,11 +830,19 @@ void createObject(SDL_Event* event, Vec2 mousePos) {
 		}
 
 		if (n2 != -1 && n2 != n1) {
-			GraphEdge* toAdd = new GraphEdge(nodes[n1], nodes[n2], WHITE, edgeType);
+			GraphEdge* toAdd = new GraphEdge(nodes[n1], nodes[n2], WHITE, nodes[n1]->getType() == Sink || nodes[n2]->getType() == Sink ? Positive : edgeType);
 			edges.push_back(toAdd);
 			nodes[n1]->addEdge(toAdd);
 			nodes[n2]->addEdge(toAdd);
 			
+		}
+		else {
+			//add new node and make new edge at same time
+			nodes.push_back(ghost->copy());
+			GraphEdge* toAdd = new GraphEdge(nodes[n1], nodes[nodes.size() - 1], WHITE, nodes[n1]->getType() == Sink || nodes[nodes.size()-1]->getType() == Sink ? Positive : edgeType);
+			edges.push_back(toAdd);
+			nodes[n1]->addEdge(toAdd);
+			nodes[nodes.size() - 1]->addEdge(toAdd);
 		}
 	}
 	else {
@@ -633,7 +925,10 @@ bool dragNode(SDL_Event* event, Uint8 button, Vec2 mousePos, bool pan) {
 					for (int i = 0; i < edges.size(); i++) {
 						edges[i]->update();
 					}
-					
+					for (int i = 0; i < textboxes.size(); i++) {
+						textboxes[i]->translateBy(mousePos2 - mousePos);
+					}
+
 					mousePos = getMousePos();
 					renderU(false);
 					SDL_RenderPresent(renderer);
@@ -765,6 +1060,191 @@ bool dragNode(SDL_Event* event, Uint8 button, Vec2 mousePos, bool pan) {
 	return true;
 }
 
+void printGraph() {
+	//map vertices to numbers, make edges, flipped edges
+
+	std::unordered_map<GraphNode*, int> addrDict;
+	int index = 1;
+
+	for (GraphNode* v : nodes) {
+		if (v->getType() != Sink) {
+			addrDict[v] = index;
+			index++;
+		}
+	}
+
+	for (GraphNode* v : nodes) {
+		if (v->getType() == Sink) {
+			addrDict[v] = index;
+			index++;
+		}
+	}
+
+	std::string makestr = "M, G = MakeGraph([";
+	std::string negstr = "L = flipEdges(M, [";
+	std::string temp = "";
+	for (GraphEdge* e : edges) {
+		int i1 = addrDict[e->getNode1()];
+		int i2 = addrDict[e->getNode2()];
+		temp = "[" + std::to_string(i1) + "," + std::to_string(i2) + "], ";
+		makestr += temp;
+		if (e->getType() == Negative) {
+			negstr += temp;
+		}
+	}
+	makestr.pop_back(); makestr.pop_back(); makestr += "])";
+	negstr.pop_back(); negstr.pop_back(); negstr += "])";
+
+
+	if (makestr.size() > 18 && negstr.size() > 18) {
+		std::cout << makestr << std::endl << negstr << std::endl << std::endl;
+		SDL_SetClipboardText((makestr + "\n" + negstr).c_str());
+	}
+	else if (negstr.size() <= 18 && makestr.size() > 18) {
+		std::cout << makestr << std::endl << std::endl;
+		SDL_SetClipboardText((makestr).c_str());
+	}
+	else {
+		std::cout << "Invalid Graph!\n\n";
+	}
+}
+
+
+std::string trimString(std::string str) {
+	std::string newStr = "";
+	for (int i = 0; i < str.size(); i++) {
+		if (str[i] != ' ' && str[i] != '\n' && str[i] != '\t') {
+			newStr += str[i];
+		}
+	}
+	return newStr;
+}
+
+void pasteGraph(){
+	//parse graph from clipboard
+	std::string graph = SDL_GetClipboardText();
+	graph = trimString(graph);
+	bool signs = true;
+
+	
+	//find the two substrings surrounded by parentheses
+	
+	int first = graph.find("(");
+	int last = graph.find(")");
+
+
+	if (graph.find("MakeGraph([") == std::string::npos || first == std::string::npos || last == std::string::npos) {
+		std::cout << "Invalid Graph!\n\n";
+		return;
+	}
+	std::string firstPart = graph.substr(first + 1, last - first - 1);
+	//make graph the substr from after the last parentheses to the end
+	
+	std::string secondPart = "";
+	graph = graph.substr(last + 1);
+
+	first = graph.find("(");
+	last = graph.find(")");
+	if (graph.find("flipEdges(") == std::string::npos || first == std::string::npos) {
+		signs = false;
+	}
+	else {
+		secondPart = graph.substr(first + 3, last - first - 3);
+	}
+	std::vector<GraphNode*> toAdd;
+	std::string temp = "";
+	int maxint = 0;
+	for (int i = 0; i < firstPart.size(); i++) {
+		if (isdigit(firstPart[i])) {
+			for (int j = i; isdigit(firstPart[j]) && j < firstPart.size(); j++) {
+				temp += firstPart[j];
+			}
+			i += temp.size() - 1;
+			maxint = maxint > std::stoi(temp) ? maxint : std::stoi(temp);
+			temp = "";
+		}
+	}
+
+
+	Vec2 center = { SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 };
+
+	Vec2 radius = { 0, 200};
+	radius = radius.rotate((360 / double(maxint)) / 2);
+
+	for (int i = 0; i < maxint; i++) {
+		toAdd.push_back(new GraphNode(center+radius, Node));
+		radius = radius.rotate(360 / double(maxint));
+	}
+	toAdd[toAdd.size()-1]->setType(Sink);
+
+	std::vector<GraphEdge*> toAddEdges;
+	std::vector<GraphEdge*> toAddNegEdges;
+	
+	temp = "";
+	int acc = -1;
+
+	for (int i = 0; i < firstPart.size(); i++) {
+		if (isdigit(firstPart[i])) {
+			for (int j = i; isdigit(firstPart[j]) && j<firstPart.size(); j++) {
+				temp += firstPart[j];
+			}
+			i += temp.size() - 1;
+			if (acc == -1) {
+				acc = std::stoi(temp);
+				temp = "";
+			}
+			else {
+				toAddEdges.push_back(new GraphEdge(toAdd[acc - 1], toAdd[std::stoi(temp) - 1], WHITE, Positive));
+				acc = -1;
+				temp = "";
+			}
+		}
+	}
+
+	if (signs) {
+		temp = "";
+		acc = -1;
+		for (int i = 0; i < secondPart.size(); i++) {
+			if (isdigit(secondPart[i])) {
+				for (int j = i; isdigit(secondPart[j]) && j < secondPart.size(); j++) {
+					temp += secondPart[j];
+				}
+				i += temp.size() - 1;
+				if (acc == -1) {
+					acc = std::stoi(temp);
+					temp = "";
+				}
+				else {
+					int n1 = acc - 1;
+					int n2 = std::stoi(temp) - 1;
+
+					for (GraphEdge* e : toAddEdges) {
+						if ((e->getNode1() == toAdd[n1] && e->getNode2() == toAdd[n2]) || (e->getNode1() == toAdd[n2] && e->getNode2() == toAdd[n1])) {
+							e->invertSign();
+						}
+					}
+					temp = "";
+					acc = -1;
+				}
+			}
+		}
+	}
+
+
+	//add all vertices to nodes
+	
+	for (GraphNode* v : toAdd) {
+		nodes.push_back(v);
+	}
+
+	//add all edges to edges
+	for (GraphEdge* e : toAddEdges) {
+		edges.push_back(e);
+		e->getNode1()->addEdge(e);
+		e->getNode2()->addEdge(e);
+	}
+}
+
 void parseKey(SDL_Event* event) {
 
 	switch (event->key.keysym.sym) {
@@ -772,7 +1252,6 @@ void parseKey(SDL_Event* event) {
 		running = false;
 		saveFile();
 		break;
-
 	case SDLK_e:
 		if (selectedInd <= 1) {
 			edgeType = (EdgeType)(((int)edgeType + 1) % edgeTypeTotal);
@@ -785,7 +1264,11 @@ void parseKey(SDL_Event* event) {
 		}
 		break;
 	case SDLK_v:
-		if (selectedInd <= 1) {
+		if (SDL_GetModState() & KMOD_CTRL) {
+			//paste graph from clipboard
+			pasteGraph();
+		}
+		else if (selectedInd <= 1) {
 			ghost->setType((NodeType)(((int)ghost->getType() + 1) % nodeTypeTotal));
 			updateIcons();
 		}
@@ -807,7 +1290,11 @@ void parseKey(SDL_Event* event) {
 		}
 		break;
 	case SDLK_c:
-		if (selectedInd == 3) {
+		if (SDL_GetModState() & KMOD_CTRL) {
+			//print out sage makegraph notation into terminal
+			printGraph();
+		}
+		else if (selectedInd == 3) {
 			selectedChipTool = (selectedChipTool + 1) % chipIcons.size();
 			updateIcons();
 		}
@@ -815,6 +1302,21 @@ void parseKey(SDL_Event* event) {
 			icons[selectedInd]->toggleSelected();
 			selectedInd = 3;
 			icons[3]->toggleSelected();
+		}
+		break;
+	case SDLK_s:
+		if (SDL_GetModState() & KMOD_CTRL) {
+			saveFile();
+		}
+		break;
+	case SDLK_o:
+		if (SDL_GetModState() & KMOD_CTRL) {
+			openFile();
+		}
+		break;
+	case SDLK_n:
+		if (SDL_GetModState() & KMOD_CTRL) {
+			newFile();
 		}
 		break;
 	case SDLK_f:
@@ -850,6 +1352,7 @@ void parseKey(SDL_Event* event) {
 		SCREEN_HEIGHT += 100;
 		SDL_SetWindowSize(window, SCREEN_WIDTH, SCREEN_HEIGHT);
 		break;
+
 	}
 }
 
@@ -954,6 +1457,9 @@ void parseMenuClick(Vec2 mousePos, SDL_Event *event)
 		break;
 	case 4:
 		openFireMenu(event);
+		break;
+	case 5:
+		openTextMenu(event);
 		break;
 	default:
 		if (clickedInd == icons.size() - 3)

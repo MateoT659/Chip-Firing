@@ -23,12 +23,15 @@ public:
 	Vec2 getPerp();
 	Vec2 getUnit();
 	Vec2 getProjectionOn(Vec2);
+	Vec2 rotate(double deg);
+
 
 	void operator+=(Vec2);
 	void operator-=(Vec2);
 	void operator*=(int);
 	void operator*=(double);
 	
+
 	double operator*(Vec2); //dot product operator
 
 	Vec2 operator+(Vec2); //addition operator
@@ -36,6 +39,7 @@ public:
 	Vec2 operator*(double); //float multiplication
 	Vec2 operator/(double); //float div
 	Vec2 operator*(int); //int multiplication
+	Vec2 operator%(double); //rotate operator
 	bool operator==(const Vec2& other)const {
 		return x == other.x && y == other.y;
 	}

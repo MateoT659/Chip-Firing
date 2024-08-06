@@ -63,6 +63,7 @@ extern TTF_Font* font;
 extern GraphNode* ghost;
 extern std::vector<GraphNode*> nodes;
 extern std::vector<GraphEdge*> edges;
+extern std::vector<Textbox*> textboxes;
 extern Textbox* tip;
 extern bool running;
 
@@ -85,9 +86,11 @@ extern std::vector<Icon*> edgeIcons;
 extern std::vector<Icon*> editIcons; 
 extern std::vector<Icon*> chipIcons;
 extern std::vector<Icon*> fireIcons;
+extern std::vector<Icon*> textIcons;
 extern int selectedEditTool;
 extern int selectedChipTool;
 extern int selectedFireTool;
+extern int selectedTextTool;
 extern std::string currentFilepath;
 
 //main.cpp

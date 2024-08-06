@@ -4,6 +4,7 @@ GraphNode* ghost;
 EdgeType edgeType;
 std::vector<GraphNode*> nodes;
 std::vector<GraphEdge*> edges;
+std::vector<Textbox*> textboxes;
 bool running;
 SDL_Window* window;
 SDL_Surface* windowSurface;
@@ -19,9 +20,11 @@ std::vector<Icon*> edgeIcons;
 std::vector<Icon*> editIcons;
 std::vector<Icon*> chipIcons;
 std::vector<Icon*> fireIcons;
+std::vector<Icon*> textIcons;
 int selectedEditTool;
 int selectedChipTool;
 int selectedFireTool;
+int selectedTextTool;
 std::string currentToolTip;
 Textbox* tip;
 
@@ -170,7 +173,18 @@ void initTextures() {
 	fireIcons.push_back(new Icon(0, 63 * 4, "Assets/IconFire.png", "Fire Vertex"));
 	fireIcons.push_back(new Icon(63, 63 * 4, "Assets/IconInvFire.png", "Inverse Fire Vertex"));
 
+	//text tool
+	selectedTextTool = 0;
+	textIcons.push_back(new Icon(0, 63 * 5, "Assets/IconText.png", "Text Creation Tool"));
+	textIcons.push_back(new Icon(63, 63 * 5, "Assets/IconEraseText.png", "Text Eraser Tool"));
+	textIcons.push_back(new Icon(63 * 2, 63 * 5, "Assets/IconMoveText.png", "Text Movement Tool"));
+
+
+
+
 	selectedInd = 0;
+
+	
 
 	//sidebar icons
 	icons.push_back(new Icon(0, 0, "Assets/IconOpenCircle.png", "Vertex Placement Tools (V)"));
@@ -180,9 +194,10 @@ void initTextures() {
 	icons.push_back(new Icon(0, 63 * 2, "Assets/IconEraser.png", "Editing Tools (T)"));
 	icons.push_back(new Icon(0, 63 * 3, "Assets/IconAddChip.png", "Chip Editing Tools (C)"));
 	icons.push_back(new Icon(0, 63 * 4, "Assets/IconFire.png", "Firing Tools (F)"));
+	icons.push_back(new Icon(0, 63 * 5, "Assets/IconText.png", "Text Tools (T)"));
 
-	icons.push_back(new Icon(0, SCREEN_HEIGHT - 120 - 63 * 3, "Assets/IconNewFile.png", "New File"));
-	icons.push_back(new Icon(0, SCREEN_HEIGHT - 120 - 63 * 2, "Assets/IconSave.png", "Save Current File"));
+	icons.push_back(new Icon(0, SCREEN_HEIGHT - 120 - 63 * 3, "Assets/IconNewFile.png", "New File (CTRL+N)"));
+	icons.push_back(new Icon(0, SCREEN_HEIGHT - 120 - 63 * 2, "Assets/IconSave.png", "Save Current File (CTRL+S)"));
 	icons.push_back(new Icon(0, SCREEN_HEIGHT - 120 - 63, "Assets/IconSaveAs.png", "Save As"));
-	icons.push_back(new Icon(0, SCREEN_HEIGHT - 120, "Assets/IconOpen.png", "Open File"));
+	icons.push_back(new Icon(0, SCREEN_HEIGHT - 120, "Assets/IconOpen.png", "Open File (CTRL+O)"));
 }

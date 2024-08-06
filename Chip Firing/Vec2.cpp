@@ -63,6 +63,12 @@ Vec2 Vec2::getProjectionOn(Vec2 other) {
 	return other * ((*this * other) / other.mag2());
 }
 
+Vec2 Vec2::rotate(double deg)
+{
+	deg = deg * 3.14159265358979323846 / 180;
+	return Vec2(x * cos(deg) - y * sin(deg), x * sin(deg) + y * cos(deg));
+}
+
 Vec2 Vec2::operator+(Vec2 other) {
 	return Vec2(x + other.x, y + other.y);
 }
@@ -74,6 +80,10 @@ Vec2 Vec2::operator*(double c) {
 }
 Vec2 Vec2::operator*(int c) {
 	return Vec2(x * c, y * c);
+}
+Vec2 Vec2::operator%(double c)
+{
+	return Vec2(x * cos(c) - y * sin(c), x * sin(c) + y * cos(c));
 }
 double Vec2::operator*(Vec2 other) {
 	return x * other.x + y * other.y;;
