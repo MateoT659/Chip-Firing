@@ -1,4 +1,4 @@
-#Chip Firing Simulation
+# Chip Firing Simulation
 
 Chip firing is a game played on signed graphs where chips are distributed around the graph through firings.  This program simulates the game in an easy to understand way. It was made entirely in C++ using SDL2 and the windows.h API. 
 
